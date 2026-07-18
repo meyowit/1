@@ -2,8 +2,18 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Meyow Dimsum</title>
+
+<!-- ===== PWA: bisa di-"Install" sebagai aplikasi di Android & iOS ===== -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#0f1117" />
+<link rel="icon" href="icon-192.png" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Meyow Kasir" />
+<!-- ===================================================================== -->
 <style>
   /* ── Tokens ── */
   :root {
@@ -939,6 +949,15 @@ function showToast(msg, type = "success") {
   t.textContent = msg;
   t.className = `show ${type}`;
   setTimeout(() => { t.className = ""; }, 3000);
+}
+
+// ─── Daftarkan Service Worker (agar bisa di-Install sebagai app) ──
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch((err) => {
+      console.warn("Gagal mendaftarkan service worker:", err);
+    });
+  });
 }
 </script>
 </body>
