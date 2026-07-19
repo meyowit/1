@@ -341,6 +341,97 @@
     margin-right: 6px;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Modal Preview Struk ── */
+  .preview-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.6);
+    z-index: 1100;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+    animation: fadeIn .2s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .preview-modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px 16px 0 0;
+    width: 100%;
+    max-width: 420px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideUp .25s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @media (min-width: 480px) {
+    .preview-overlay { align-items: center; }
+    .preview-modal { border-radius: 16px; }
+  }
+  .preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 700;
+    font-size: 15px;
+  }
+  .preview-close {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 4px 8px;
+  }
+  .preview-close:hover { color: var(--text); }
+  .preview-struk {
+    background: #ffffff;
+    color: #0a0a0a;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    padding: 20px 16px;
+    margin: 14px 16px;
+    border-radius: 6px;
+    overflow-y: auto;
+    box-shadow: 0 2px 10px rgba(0,0,0,.25);
+  }
+  .preview-actions {
+    display: flex;
+    gap: 10px;
+    padding: 14px 16px 18px;
+    border-top: 1px solid var(--border);
+  }
+  .preview-btn {
+    flex: 1;
+    padding: 13px;
+    border-radius: 10px;
+    border: none;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity .15s ease;
+  }
+  .preview-btn:active { opacity: .8; }
+  .preview-btn.cancel {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .preview-btn.confirm {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+  }
+  .preview-btn:disabled { opacity: .6; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -416,7 +507,7 @@
   </div>
 
   <button class="submit-btn" id="btn-penjualan" onclick="submitPenjualan()">
-    Simpan Penjualan ke Sheet
+    Preview &amp; Simpan Penjualan
   </button>
   <button class="add-btn" id="btn-reprint" style="margin-top:8px" onclick="reprintLastStruk()">
     🖨️ Cetak Ulang Struk Terakhir
@@ -460,6 +551,21 @@
 <datalist id="bahan-datalist"></datalist>
 
 <div id="toast"></div>
+
+<!-- ─── Modal Preview Struk ───────────────────────────────── -->
+<div id="preview-overlay" class="preview-overlay" style="display:none;">
+  <div class="preview-modal">
+    <div class="preview-header">
+      <span>🧾 Preview Struk</span>
+      <button class="preview-close" onclick="closePreviewModal()">✕</button>
+    </div>
+    <pre id="preview-struk-text" class="preview-struk"></pre>
+    <div class="preview-actions">
+      <button class="preview-btn cancel" onclick="closePreviewModal()">Batal / Edit</button>
+      <button class="preview-btn confirm" id="btn-preview-confirm" onclick="confirmSubmit()">✅ Simpan &amp; Cetak</button>
+    </div>
+  </div>
+</div>
 
 </div><!-- /#app-content -->
 
@@ -820,8 +926,10 @@ function reprintLastStruk() {
   printToRawBT(lastStrukText);
 }
 
-// ─── Submit Penjualan ─────────────────────────────────────
-async function submitPenjualan() {
+// ─── Submit Penjualan (tahap 1: siapkan & tampilkan preview) ──
+let pendingPenjualan = null; // menyimpan data yang menunggu konfirmasi
+
+function submitPenjualan() {
   if (!API_URL) { showToast("Hubungkan ke spreadsheet dulu", "error"); return; }
   const rows = document.querySelectorAll("[id^='pj-row-']");
   const items = [];
@@ -851,9 +959,33 @@ async function submitPenjualan() {
   const bank = document.getElementById("p-bank").value;
   items.forEach(i => { i.pembayaran = pembayaran; i.bank = bank; });
 
-  const btn = document.getElementById("btn-penjualan");
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Menyimpan...';
+  const grand = items.reduce((acc, it) => acc + it.jumlah * it.harga, 0)
+    - (adjType === "diskon" ? (items[0].diskon || 0) : 0)
+    + (adjType === "admin" ? (items[0].adminFee || 0) : 0);
+
+  const strukText = buildStrukText(items, adjType, adjValue, grand, pembayaran, bank);
+
+  // Simpan sementara, belum dikirim ke Sheet — menunggu konfirmasi dari preview
+  pendingPenjualan = { items, adjType, adjValue, grand, pembayaran, bank, strukText };
+
+  document.getElementById("preview-struk-text").textContent = strukText;
+  document.getElementById("preview-overlay").style.display = "flex";
+}
+
+// Tutup modal preview tanpa menyimpan apa pun (bisa edit form dulu)
+function closePreviewModal() {
+  document.getElementById("preview-overlay").style.display = "none";
+  pendingPenjualan = null;
+}
+
+// ─── Submit Penjualan (tahap 2: setelah dikonfirmasi di preview) ──
+async function confirmSubmit() {
+  if (!pendingPenjualan) return;
+  const { items, adjType, adjValue, grand, pembayaran, bank, strukText } = pendingPenjualan;
+
+  const confirmBtn = document.getElementById("btn-preview-confirm");
+  confirmBtn.disabled = true;
+  confirmBtn.innerHTML = '<span class="spinner"></span>Menyimpan...';
 
   try {
     const res = await fetch(API_URL, {
@@ -863,11 +995,10 @@ async function submitPenjualan() {
     const data = await res.json();
     if (data.success) {
       showToast(`✅ ${data.message}`, "success");
-      const grand = items.reduce((acc, it) => acc + it.jumlah * it.harga, 0)
-        - (adjType === "diskon" ? (items[0].diskon || 0) : 0)
-        + (adjType === "admin" ? (items[0].adminFee || 0) : 0);
-      lastStrukText = buildStrukText(items, adjType, adjValue, grand, pembayaran, bank);
-      printToRawBT(lastStrukText);
+      lastStrukText = strukText;
+      printToRawBT(strukText);
+      document.getElementById("preview-overlay").style.display = "none";
+      pendingPenjualan = null;
       resetPenjualan();
     } else {
       showToast("Gagal: " + data.error, "error");
@@ -875,8 +1006,8 @@ async function submitPenjualan() {
   } catch(e) {
     showToast("Error: " + e.message, "error");
   } finally {
-    btn.disabled = false;
-    btn.innerHTML = "Simpan Penjualan ke Sheet";
+    confirmBtn.disabled = false;
+    confirmBtn.innerHTML = "✅ Simpan & Cetak";
   }
 }
 
