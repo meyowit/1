@@ -1089,6 +1089,16 @@ if ("serviceWorker" in navigator) {
       console.warn("Gagal mendaftarkan service worker:", err);
     });
   });
+
+  // Kalau ada versi service worker baru yang mengambil alih (misal setelah
+  // sw.js diupdate di GitHub), reload otomatis sekali supaya kasir langsung
+  // pakai versi terbaru, tidak perlu tutup-buka app manual.
+  let hasReloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (hasReloaded) return;
+    hasReloaded = true;
+    window.location.reload();
+  });
 }
 </script>
 </body>
