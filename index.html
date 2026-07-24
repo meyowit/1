@@ -7,7 +7,7 @@
 
 <!-- ===== PWA: bisa di-"Install" sebagai aplikasi di Android & iOS ===== -->
 <link rel="manifest" href="manifest.json" />
-<meta name="theme-color" content="#0f1117" />
+<meta name="theme-color" content="#fdf1dc" />
 <link rel="icon" href="icon-192.png" />
 <link rel="apple-touch-icon" href="icon-192.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -17,16 +17,16 @@
 <style>
   /* ── Tokens ── */
   :root {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --surface2: #22263a;
-    --border: #2e3350;
-    --accent: #f97316;
-    --accent2: #fb923c;
-    --green: #22c55e;
-    --red: #ef4444;
-    --text: #e8eaf2;
-    --muted: #7c82a3;
+    --bg: #fdf1dc;
+    --surface: #fffdf8;
+    --surface2: #fbe4bf;
+    --border: #f0d2a0;
+    --accent: #e8734c;
+    --accent2: #f2a65a;
+    --green: #4c9a5b;
+    --red: #d9534f;
+    --text: #4a2c1d;
+    --muted: #a3805e;
     --radius: 12px;
     --font: 'Segoe UI', system-ui, sans-serif;
   }
@@ -108,7 +108,19 @@
   header .logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
   header h1 { font-size: 17px; font-weight: 700; }
   header p { font-size: 12px; color: var(--muted); }
-  header .header-right { margin-left: auto; }
+  header .header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .worker-badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .worker-badge:hover { border-color: var(--accent); color: var(--accent); }
   #retry-btn {
     background: none;
     border: 1px solid var(--border);
@@ -119,6 +131,62 @@
     cursor: pointer;
   }
   #retry-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Menu Utama ── */
+  .main-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px 16px 0;
+  }
+  .menu-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all .2s;
+    box-shadow: 0 2px 8px rgba(74,44,29,.06);
+  }
+  .menu-card:active { transform: scale(.98); }
+  .menu-card:hover { border-color: var(--accent); }
+  .menu-card-icon { font-size: 36px; margin-bottom: 4px; }
+  .menu-card-label { font-size: 17px; font-weight: 800; color: var(--text); }
+  .menu-card-sub { font-size: 12px; color: var(--muted); }
+
+  .panel-nav { margin: -4px 0 14px; }
+  .back-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 4px 0;
+  }
+  .back-btn:hover { color: var(--accent); }
+
+  /* ── Worker Picker ── */
+  .worker-list { padding: 14px 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .worker-option {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    cursor: pointer;
+    text-align: center;
+    transition: all .15s;
+  }
+  .worker-option.active { border-color: var(--accent); background: rgba(232,115,76,.12); color: var(--accent); }
+  .worker-option:active { opacity: .8; }
 
   /* ── Tabs ── */
   .tabs {
@@ -152,8 +220,8 @@
     display: none;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 0 var(--radius) var(--radius) var(--radius);
-    margin: 0 16px;
+    border-radius: var(--radius);
+    margin: 16px 16px 0;
     padding: 20px 16px;
   }
   .panel.active { display: block; }
@@ -291,6 +359,25 @@
 
   /* ── Payment section ── */
   .pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0; }
+
+  .cash-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin: 0 0 14px;
+  }
+  .kembalian-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .kembalian-row.negative .price-tag { color: var(--red); }
 
   /* ── Submit ── */
   .submit-btn {
@@ -458,18 +545,34 @@
     <p id="status-text">Menghubungkan ke spreadsheet...</p>
   </div>
   <div class="header-right">
+    <button id="worker-badge" class="worker-badge" onclick="openWorkerPicker()" title="Ganti penjaga">👤 Pilih Penjaga</button>
     <button id="retry-btn" onclick="loadData()" title="Coba sambungkan ulang">🔄</button>
   </div>
 </header>
 
-<!-- Tabs -->
-<div class="tabs">
+<!-- Menu Utama -->
+<div id="main-menu" class="main-menu">
+  <div class="menu-card" onclick="showView('penjualan')">
+    <span class="menu-card-icon">🧾</span>
+    <span class="menu-card-label">Penjualan</span>
+    <span class="menu-card-sub">Catat transaksi &amp; cetak struk</span>
+  </div>
+  <div class="menu-card" onclick="showView('pengeluaran')">
+    <span class="menu-card-icon">📦</span>
+    <span class="menu-card-label">Pengeluaran</span>
+    <span class="menu-card-sub">Catat pembelian bahan baku</span>
+  </div>
+</div>
+
+<!-- Tabs (tidak lagi dipakai untuk navigasi utama, disembunyikan) -->
+<div class="tabs" style="display:none;">
   <div class="tab active" onclick="switchTab('penjualan')">🧾 Penjualan</div>
   <div class="tab" onclick="switchTab('pengeluaran')">📦 Pengeluaran</div>
 </div>
 
 <!-- Panel Penjualan -->
-<div class="panel active" id="panel-penjualan">
+<div class="panel" id="panel-penjualan">
+  <div class="panel-nav"><button class="back-btn" onclick="showView('menu')">← Menu</button></div>
   <div class="section-label">Item Dibeli</div>
   <div id="penjualan-items"></div>
   <button class="add-btn" onclick="addPenjualanItem()">+ Tambah Produk</button>
@@ -498,11 +601,20 @@
   <div class="pay-grid">
     <div>
       <label class="field-label">Metode</label>
-      <select id="p-pembayaran"><option value="">-- Pilih --</option></select>
+      <select id="p-pembayaran" onchange="onPembayaranChange()"><option value="">-- Pilih --</option></select>
     </div>
     <div>
       <label class="field-label">Bank / Dompet</label>
       <select id="p-bank"><option value="">-- Pilih --</option></select>
+    </div>
+  </div>
+
+  <div class="cash-box" id="cash-box" style="display:none;">
+    <label class="field-label">Uang Diterima dari Customer (Rp)</label>
+    <input type="number" id="p-cash-given" min="0" placeholder="mis. 150000" oninput="updateKembalian()" />
+    <div class="kembalian-row" id="kembalian-row">
+      <span>Kembalian</span>
+      <span class="price-tag" id="p-kembalian">Rp 0</span>
     </div>
   </div>
 
@@ -516,6 +628,7 @@
 
 <!-- Panel Pengeluaran -->
 <div class="panel" id="panel-pengeluaran">
+  <div class="panel-nav"><button class="back-btn" onclick="showView('menu')">← Menu</button></div>
   <div class="section-label">Bahan / Item Dibeli</div>
   <div id="pengeluaran-items"></div>
   <button class="add-btn" onclick="addPengeluaranItem()">+ Tambah Item</button>
@@ -567,17 +680,29 @@
   </div>
 </div>
 
+<!-- ─── Modal Pilih Penjaga Kasir ─────────────────────────── -->
+<div id="worker-overlay" class="preview-overlay" style="display:none;">
+  <div class="preview-modal worker-modal">
+    <div class="preview-header">
+      <span>👤 Siapa yang sedang berjaga?</span>
+      <button class="preview-close" onclick="closeWorkerPicker()">✕</button>
+    </div>
+    <div class="worker-list" id="worker-list"></div>
+  </div>
+</div>
+
 </div><!-- /#app-content -->
 
 <script>
 // ─── Config (hardcoded — tidak perlu input manual lagi) ────
-const API_URL = "https://script.google.com/macros/s/AKfycbzfq-LKs1Ejn9PPr9vNCoTrTAGMi5EstwDD1NxaBulSbsqd5-0LPeBWCsZOd9bGmD2A4Q/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzauM8UZAKNUfALFKXeZjkiOA7Zdm_tnrNbKBjU8cS0RjqLlIArQ1EaEKWbof1GovEh/exec";
 const LOGIN_PASSWORD = "meyowds";
 const AUTH_KEY = "meyow_authed";
 
-// ─── Konfigurasi Print Struk (RawBT — Iware C8LP 80mm) ────
+// ─── Konfigurasi Print Struk (RawBT — printer thermal 58mm) ────
 const STORE_NAME = "Meyow Dimsum";
-const RECEIPT_WIDTH = 32; // jumlah karakter per baris. Kalau hasil print kepotong, coba naikkan ke 48. Kalau tulisan kegedean/tidak muat, turunkan ke 24.
+const STORE_ADDRESS = "RT.14/RW.1, Pondok Labu, Cilandak, Jakarta Selatan 12450";
+const RECEIPT_WIDTH = 32; // jumlah karakter per baris (pas untuk kertas 58mm). Kalau hasil print kepotong, coba naikkan ke 48. Kalau tulisan kegedean/tidak muat, turunkan ke 24.
 let lastStrukText = null; // menyimpan teks struk terakhir untuk fitur "Cetak Ulang"
 
 // ─── State ───────────────────────────────────────────────
@@ -621,6 +746,8 @@ function showApp() {
   document.getElementById("app-content").classList.add("visible");
   addPenjualanItem();
   addPengeluaranItem();
+  updateWorkerBadge();
+  showView("menu");
   loadData();
 }
 
@@ -671,13 +798,68 @@ function populateDropdowns() {
     bahanList.map(b => `<option value="${b.name}">${b.biaya ? fmt(b.biaya) : ''}</option>`).join("");
 }
 
-// ─── Tabs ─────────────────────────────────────────────────
-function switchTab(name) {
-  document.querySelectorAll(".tab").forEach((t, i) => {
-    t.classList.toggle("active", (i === 0 && name === "penjualan") || (i === 1 && name === "pengeluaran"));
-  });
+// ─── Penjaga Kasir (Worker) ─────────────────────────────────
+const WORKERS = ["Jennifer", "Usniatuz"];
+const WORKER_KEY = "meyow_active_worker";
+let activeWorker = localStorage.getItem(WORKER_KEY) || "";
+
+function updateWorkerBadge() {
+  const badge = document.getElementById("worker-badge");
+  badge.textContent = activeWorker ? `👤 ${activeWorker}` : "👤 Pilih Penjaga";
+}
+
+function openWorkerPicker() {
+  const list = document.getElementById("worker-list");
+  list.innerHTML = WORKERS.map(w =>
+    `<div class="worker-option ${w === activeWorker ? "active" : ""}" onclick="selectWorker('${w}')">${w}</div>`
+  ).join("");
+  document.getElementById("worker-overlay").style.display = "flex";
+}
+function closeWorkerPicker() {
+  document.getElementById("worker-overlay").style.display = "none";
+}
+function selectWorker(name) {
+  activeWorker = name;
+  localStorage.setItem(WORKER_KEY, name);
+  updateWorkerBadge();
+  closeWorkerPicker();
+  showToast(`Penjaga aktif: ${name}`, "success");
+}
+
+// ─── Navigasi (Menu Utama ⇄ Panel) ─────────────────────────
+function showView(name) {
+  document.getElementById("main-menu").style.display = name === "menu" ? "flex" : "none";
   document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
-  document.getElementById(`panel-${name}`).classList.add("active");
+  if (name === "penjualan" || name === "pengeluaran") {
+    document.getElementById(`panel-${name}`).classList.add("active");
+    if (name === "penjualan" && !activeWorker) openWorkerPicker(); // wajib pilih penjaga dulu sebelum jualan
+  }
+  window.scrollTo(0, 0);
+}
+// Alias lama, tetap ada untuk jaga-jaga
+function switchTab(name) { showView(name); }
+
+// ─── Pembayaran Cash: tampilkan input uang diterima & hitung kembalian ──
+function onPembayaranChange() {
+  const pembayaran = document.getElementById("p-pembayaran").value;
+  const box = document.getElementById("cash-box");
+  if (pembayaran === "Cash") {
+    box.style.display = "block";
+    updateKembalian();
+  } else {
+    box.style.display = "none";
+  }
+}
+
+function updateKembalian() {
+  const grandText = document.getElementById("p-grand-total").textContent.replace(/[^\d]/g, "");
+  const grand = parseFloat(grandText) || 0;
+  const cashGiven = parseFloat(document.getElementById("p-cash-given").value) || 0;
+  const kembalian = cashGiven - grand;
+  const row = document.getElementById("kembalian-row");
+  const el = document.getElementById("p-kembalian");
+  el.textContent = "Rp " + fmt(Math.abs(kembalian));
+  row.classList.toggle("negative", kembalian < 0);
 }
 
 // ─── Adjustment type (Diskon / Admin) ──────────────────────
@@ -769,6 +951,7 @@ function updatePenjualanSummary() {
 
   document.getElementById("penjualan-subtotals").innerHTML = subtotalsHtml;
   document.getElementById("p-grand-total").textContent = `Rp ${fmt(grand)}`;
+  if (document.getElementById("p-pembayaran").value === "Cash") updateKembalian();
 }
 
 // ─── Pengeluaran Items ────────────────────────────────────
@@ -868,8 +1051,27 @@ function centerText(text, width = RECEIPT_WIDTH) {
   return " ".repeat(Math.floor(padTotal / 2)) + text;
 }
 
+// Word-wrap teks panjang (misal alamat) jadi beberapa baris, tiap baris di-center
+function wrapCenterText(text, width = RECEIPT_WIDTH) {
+  const words = String(text).split(" ");
+  const lines = [];
+  let cur = "";
+  words.forEach(w => {
+    const test = cur ? cur + " " + w : w;
+    if (test.length > width) {
+      if (cur) lines.push(cur);
+      cur = w;
+    } else {
+      cur = test;
+    }
+  });
+  if (cur) lines.push(cur);
+  return lines.map(l => centerText(l, width)).join("\n");
+}
+
 // Susun teks struk polos (plain text) dari data penjualan
-function buildStrukText(items, adjType, adjValue, grandTotal, pembayaran, bank) {
+// extra = { worker, cashGiven, kembalian } — opsional
+function buildStrukText(items, adjType, adjValue, grandTotal, pembayaran, bank, extra = {}) {
   const W = RECEIPT_WIDTH;
   const line = "-".repeat(W);
   const now = new Date().toLocaleString("id-ID", {
@@ -879,9 +1081,11 @@ function buildStrukText(items, adjType, adjValue, grandTotal, pembayaran, bank) 
 
   let out = "";
   out += centerText(STORE_NAME, W) + "\n";
+  out += wrapCenterText(STORE_ADDRESS, W) + "\n";
   out += centerText("Struk Penjualan", W) + "\n";
   out += line + "\n";
   out += now + "\n";
+  if (extra.worker) out += `Dikasirkan oleh: ${extra.worker}\n`;
   out += line + "\n";
 
   items.forEach(it => {
@@ -898,6 +1102,10 @@ function buildStrukText(items, adjType, adjValue, grandTotal, pembayaran, bank) 
 
   out += padLine("TOTAL", "Rp " + fmt(grandTotal), W) + "\n";
   out += padLine("Bayar", pembayaran + (bank ? " - " + bank : ""), W) + "\n";
+  if (pembayaran === "Cash" && extra.cashGiven > 0) {
+    out += padLine("Cash", "Rp " + fmt(extra.cashGiven), W) + "\n";
+    out += padLine("Kembali", "Rp " + fmt(extra.kembalian), W) + "\n";
+  }
   out += line + "\n";
   out += centerText("Terima kasih!", W) + "\n";
   out += "\n\n\n"; // spasi kosong untuk sobek kertas
@@ -905,7 +1113,7 @@ function buildStrukText(items, adjType, adjValue, grandTotal, pembayaran, bank) 
   return out;
 }
 
-// Kirim teks struk ke printer lewat aplikasi RawBT (harus sudah terinstall & printer sudah paired)
+// Kirim teks struk polos ke printer lewat RawBT (fallback, tanpa watermark)
 function printToRawBT(text) {
   try {
     const encoded = encodeURIComponent(text);
@@ -917,13 +1125,88 @@ function printToRawBT(text) {
   }
 }
 
+// ─── Cetak struk sebagai GAMBAR (agar bisa tampilkan watermark logo transparan) ──
+const STRUK_IMG_WIDTH = 384; // px, cocok untuk kertas 58mm. Kalau pakai 80mm, ubah ke ~576 dan sesuaikan RECEIPT_WIDTH.
+const STRUK_CHAR_W = STRUK_IMG_WIDTH / RECEIPT_WIDTH;
+
+function buildStrukImage(strukText) {
+  return new Promise((resolve, reject) => {
+    try {
+      const lines = strukText.replace(/\n+$/, "").split("\n");
+      const lineH = 26;
+      const padding = 20;
+      const canvas = document.createElement("canvas");
+      canvas.width = STRUK_IMG_WIDTH;
+      canvas.height = lines.length * lineH + padding * 2 + 30;
+      const ctx = canvas.getContext("2d");
+
+      // Background putih (kertas)
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const drawTextAndFinish = () => {
+        ctx.fillStyle = "#000000";
+        ctx.font = "20px 'Courier New', monospace";
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "center";
+        lines.forEach((line, i) => {
+          const y = padding + i * lineH + lineH / 2;
+          for (let c = 0; c < line.length && c < RECEIPT_WIDTH; c++) {
+            const ch = line[c];
+            if (ch === " ") continue;
+            const x = c * STRUK_CHAR_W + STRUK_CHAR_W / 2;
+            ctx.fillText(ch, x, y);
+          }
+        });
+        resolve(canvas.toDataURL("image/png").split(",")[1]);
+      };
+
+      // Watermark logo opacity rendah di background (pakai logo yang sudah ada di halaman)
+      const logoEl = document.querySelector(".login-card img");
+      if (logoEl) {
+        const drawWatermark = () => {
+          const size = STRUK_IMG_WIDTH * 0.65;
+          ctx.save();
+          ctx.globalAlpha = 0.09;
+          ctx.drawImage(logoEl, (canvas.width - size) / 2, (canvas.height - size) / 2, size, size);
+          ctx.restore();
+          drawTextAndFinish();
+        };
+        if (logoEl.complete && logoEl.naturalWidth > 0) drawWatermark();
+        else { logoEl.onload = drawWatermark; logoEl.onerror = drawTextAndFinish; }
+      } else {
+        drawTextAndFinish();
+      }
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+function printToRawBTImage(base64png) {
+  const intentUrl = `intent:data:image/png;base64,${base64png}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
+  window.location.href = intentUrl;
+}
+
+// Fungsi utama pencetakan: coba cetak sebagai gambar (ada watermark),
+// kalau gagal (mis. canvas error), fallback ke teks polos supaya tetap tercetak.
+async function printStruk(text) {
+  try {
+    const base64 = await buildStrukImage(text);
+    printToRawBTImage(base64);
+  } catch (e) {
+    console.warn("Gagal cetak sebagai gambar, fallback ke teks:", e);
+    printToRawBT(text);
+  }
+}
+
 // Tombol "Cetak Ulang Struk Terakhir"
 function reprintLastStruk() {
   if (!lastStrukText) {
     showToast("Belum ada struk untuk dicetak", "error");
     return;
   }
-  printToRawBT(lastStrukText);
+  printStruk(lastStrukText);
 }
 
 // ─── Submit Penjualan (tahap 1: siapkan & tampilkan preview) ──
@@ -931,6 +1214,8 @@ let pendingPenjualan = null; // menyimpan data yang menunggu konfirmasi
 
 function submitPenjualan() {
   if (!API_URL) { showToast("Hubungkan ke spreadsheet dulu", "error"); return; }
+  if (!activeWorker) { showToast("Pilih penjaga kasir dulu", "error"); openWorkerPicker(); return; }
+
   const rows = document.querySelectorAll("[id^='pj-row-']");
   const items = [];
 
@@ -957,16 +1242,30 @@ function submitPenjualan() {
 
   const pembayaran = document.getElementById("p-pembayaran").value;
   const bank = document.getElementById("p-bank").value;
+  if (!pembayaran) { showToast("Pilih metode pembayaran", "error"); return; }
   items.forEach(i => { i.pembayaran = pembayaran; i.bank = bank; });
 
   const grand = items.reduce((acc, it) => acc + it.jumlah * it.harga, 0)
     - (adjType === "diskon" ? (items[0].diskon || 0) : 0)
     + (adjType === "admin" ? (items[0].adminFee || 0) : 0);
 
-  const strukText = buildStrukText(items, adjType, adjValue, grand, pembayaran, bank);
+  // Cash: validasi uang diterima cukup, hitung kembalian
+  let cashGiven = 0, kembalian = 0;
+  if (pembayaran === "Cash") {
+    cashGiven = parseFloat(document.getElementById("p-cash-given").value) || 0;
+    if (cashGiven < grand) {
+      showToast("Uang diterima kurang dari total", "error");
+      return;
+    }
+    kembalian = cashGiven - grand;
+  }
+
+  const strukText = buildStrukText(items, adjType, adjValue, grand, pembayaran, bank, {
+    worker: activeWorker, cashGiven, kembalian
+  });
 
   // Simpan sementara, belum dikirim ke Sheet — menunggu konfirmasi dari preview
-  pendingPenjualan = { items, adjType, adjValue, grand, pembayaran, bank, strukText };
+  pendingPenjualan = { items, adjType, adjValue, grand, pembayaran, bank, strukText, worker: activeWorker };
 
   document.getElementById("preview-struk-text").textContent = strukText;
   document.getElementById("preview-overlay").style.display = "flex";
@@ -981,7 +1280,7 @@ function closePreviewModal() {
 // ─── Submit Penjualan (tahap 2: setelah dikonfirmasi di preview) ──
 async function confirmSubmit() {
   if (!pendingPenjualan) return;
-  const { items, adjType, adjValue, grand, pembayaran, bank, strukText } = pendingPenjualan;
+  const { items, adjType, adjValue, grand, pembayaran, bank, strukText, worker } = pendingPenjualan;
 
   const confirmBtn = document.getElementById("btn-preview-confirm");
   confirmBtn.disabled = true;
@@ -990,13 +1289,13 @@ async function confirmSubmit() {
   try {
     const res = await fetch(API_URL, {
       method: "POST",
-      body: JSON.stringify({ action: "addPenjualan", data: items })
+      body: JSON.stringify({ action: "addPenjualan", data: items, worker: worker })
     });
     const data = await res.json();
     if (data.success) {
       showToast(`✅ ${data.message}`, "success");
       lastStrukText = strukText;
-      printToRawBT(strukText);
+      printStruk(strukText);
       document.getElementById("preview-overlay").style.display = "none";
       pendingPenjualan = null;
       resetPenjualan();
@@ -1062,6 +1361,10 @@ function resetPenjualan() {
   penjualanCount = 0;
   document.getElementById("p-diskon").value = "";
   setAdjType("diskon");
+  document.getElementById("p-pembayaran").value = "";
+  document.getElementById("p-bank").value = "";
+  document.getElementById("p-cash-given").value = "";
+  document.getElementById("cash-box").style.display = "none";
   addPenjualanItem();
 }
 function resetPengeluaran() {
