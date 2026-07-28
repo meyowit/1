@@ -562,6 +562,11 @@
     <span class="menu-card-label">Pengeluaran</span>
     <span class="menu-card-sub">Catat pembelian bahan baku</span>
   </div>
+  <div class="menu-card" onclick="showView('terima')">
+    <span class="menu-card-icon">📥</span>
+    <span class="menu-card-label">Terima Barang</span>
+    <span class="menu-card-sub">Catat barang masuk dari pusat</span>
+  </div>
 </div>
 
 <!-- Tabs (tidak lagi dipakai untuk navigasi utama, disembunyikan) -->
@@ -646,7 +651,7 @@
   <div class="pay-grid">
     <div>
       <label class="field-label">Metode</label>
-      <select id="e-pembayaran"><option value="">-- Pilih --</option></select>
+      <select id="e-pembayaran" onchange="autoFillBank('e-pembayaran','e-bank')"><option value="">-- Pilih --</option></select>
     </div>
     <div>
       <label class="field-label">Bank / Dompet</label>
@@ -656,6 +661,27 @@
 
   <button class="submit-btn" id="btn-pengeluaran" onclick="submitPengeluaran()">
     Simpan Pengeluaran ke Sheet
+  </button>
+</div>
+
+<!-- Panel Terima Barang -->
+<div class="panel" id="panel-terima">
+  <div class="panel-nav"><button class="back-btn" onclick="showView('menu')">← Menu</button></div>
+  <div class="section-label">Barang Diterima dari Pusat</div>
+  <div id="terima-items"></div>
+  <button class="add-btn" onclick="addTerimaItem()">+ Tambah Item</button>
+
+  <div class="summary-box" style="margin-top:20px">
+    <div class="section-label">Total Nilai Barang Diterima</div>
+    <div id="terima-subtotals"></div>
+    <div class="summary-total">
+      <span class="label">Total</span>
+      <span class="value" id="t-grand-total">Rp 0</span>
+    </div>
+  </div>
+
+  <button class="submit-btn" id="btn-terima" onclick="submitTerima()">
+    Simpan ke Sheet Receive
   </button>
 </div>
 
@@ -746,6 +772,7 @@ function showApp() {
   document.getElementById("app-content").classList.add("visible");
   addPenjualanItem();
   addPengeluaranItem();
+  addTerimaItem();
   updateWorkerBadge();
   showView("menu");
   loadData();
@@ -850,8 +877,20 @@ function showView(name) {
 // Alias lama, tetap ada untuk jaga-jaga
 function switchTab(name) { showView(name); }
 
+// ─── Auto-isi Bank berdasarkan metode pembayaran ───────────
+const BANK_AUTOFILL = { "Transfer": "BCA", "Cash": "Cash", "QRIS": "BCA" };
+function autoFillBank(pembayaranSelectId, bankSelectId) {
+  const pembayaran = document.getElementById(pembayaranSelectId).value;
+  const bankSelect = document.getElementById(bankSelectId);
+  const target = BANK_AUTOFILL[pembayaran];
+  if (target && Array.from(bankSelect.options).some(o => o.value === target)) {
+    bankSelect.value = target;
+  }
+}
+
 // ─── Pembayaran Cash: tampilkan input uang diterima & hitung kembalian ──
 function onPembayaranChange() {
+  autoFillBank("p-pembayaran", "p-bank");
   const pembayaran = document.getElementById("p-pembayaran").value;
   const box = document.getElementById("cash-box");
   if (pembayaran === "Cash") {
@@ -985,16 +1024,16 @@ function addPengeluaranItem() {
     <div class="field-group">
       <div>
         <label class="field-label">Jumlah</label>
-        <input type="number" class="qty-input" id="pe-qty-${id}" min="1" value="1" onchange="updatePengeluaranSummary()" />
+        <input type="number" class="qty-input" id="pe-qty-${id}" min="1" value="1" oninput="updatePengeluaranSummary()" />
       </div>
       <div>
-        <label class="field-label">Harga Satuan (Rp)</label>
-        <input type="number" class="harga-input" id="pe-harga-${id}" min="0" value="0" onchange="updatePengeluaranSummary()" />
+        <label class="field-label">Total Biaya (Rp)</label>
+        <input type="number" class="harga-input" id="pe-total-${id}" min="0" value="0" oninput="updatePengeluaranSummary()" />
       </div>
     </div>
     <div class="subtotal-row">
-      <span>Subtotal</span>
-      <span class="price-tag" id="pe-sub-${id}">Rp 0</span>
+      <span>Harga Satuan (otomatis)</span>
+      <span class="price-tag" id="pe-satuan-${id}">Rp 0</span>
     </div>
   `;
   container.appendChild(div);
@@ -1002,10 +1041,6 @@ function addPengeluaranItem() {
 }
 
 function onBahanChange(inputEl, id) {
-  const match = bahanList.find(b => b.name === inputEl.value);
-  if (match && match.biaya > 0) {
-    document.getElementById(`pe-harga-${id}`).value = match.biaya;
-  }
   updatePengeluaranSummary();
 }
 
@@ -1018,10 +1053,10 @@ function updatePengeluaranSummary() {
     const nameInput = document.getElementById(`pe-bahan-${id}`);
     const name = nameInput ? nameInput.value.trim() : "";
     const qty = parseFloat(document.getElementById(`pe-qty-${id}`)?.value) || 0;
-    const harga = parseFloat(document.getElementById(`pe-harga-${id}`)?.value) || 0;
-    const sub = qty * harga;
-    const subEl = document.getElementById(`pe-sub-${id}`);
-    if (subEl) subEl.textContent = `Rp ${fmt(sub)}`;
+    const sub = parseFloat(document.getElementById(`pe-total-${id}`)?.value) || 0;
+    const satuan = qty > 0 ? Math.round((sub / qty) * 10) / 10 : 0;
+    const satuanEl = document.getElementById(`pe-satuan-${id}`);
+    if (satuanEl) satuanEl.textContent = `Rp ${fmt(satuan)}`;
     if (name) {
       subtotalsHtml += `<div class="subtotal-row"><span>${name} ×${qty}</span><span>${fmt(sub)}</span></div>`;
       total += sub;
@@ -1029,6 +1064,65 @@ function updatePengeluaranSummary() {
   });
   document.getElementById("pengeluaran-subtotals").innerHTML = subtotalsHtml;
   document.getElementById("e-grand-total").textContent = `Rp ${fmt(total)}`;
+}
+
+// ─── Terima Barang ──────────────────────────────────────────
+let terimaCount = 0;
+function addTerimaItem() {
+  terimaCount++;
+  const id = terimaCount;
+  const container = document.getElementById("terima-items");
+  const div = document.createElement("div");
+  div.className = "item-row";
+  div.id = `t-row-${id}`;
+  div.innerHTML = `
+    <div class="row-head">
+      <span class="row-num">Item #${id}</span>
+      <button class="remove-btn" onclick="removeRow('t-row-${id}', 'terima')">✕</button>
+    </div>
+    <div>
+      <label class="field-label">Nama Barang</label>
+      <input type="text" class="bahan-select" id="t-nama-${id}" list="bahan-datalist" placeholder="🔍 Cari atau ketik nama barang..." autocomplete="off" oninput="updateTerimaSummary()" />
+    </div>
+    <div class="field-group">
+      <div>
+        <label class="field-label">Jumlah</label>
+        <input type="number" class="qty-input" id="t-qty-${id}" min="1" value="1" oninput="updateTerimaSummary()" />
+      </div>
+      <div>
+        <label class="field-label">Total Nilai (Rp)</label>
+        <input type="number" class="harga-input" id="t-total-${id}" min="0" value="0" oninput="updateTerimaSummary()" />
+      </div>
+    </div>
+    <div class="subtotal-row">
+      <span>Harga Satuan (otomatis)</span>
+      <span class="price-tag" id="t-satuan-${id}">Rp 0</span>
+    </div>
+  `;
+  container.appendChild(div);
+  updateTerimaSummary();
+}
+
+function updateTerimaSummary() {
+  const rows = document.querySelectorAll("[id^='t-row-']");
+  let total = 0;
+  let subtotalsHtml = "";
+  rows.forEach(row => {
+    const id = row.id.replace("t-row-", "");
+    const nameInput = document.getElementById(`t-nama-${id}`);
+    const name = nameInput ? nameInput.value.trim() : "";
+    const qty = parseFloat(document.getElementById(`t-qty-${id}`)?.value) || 0;
+    const sub = parseFloat(document.getElementById(`t-total-${id}`)?.value) || 0;
+    const satuan = qty > 0 ? Math.round((sub / qty) * 10) / 10 : 0;
+    const satuanEl = document.getElementById(`t-satuan-${id}`);
+    if (satuanEl) satuanEl.textContent = `Rp ${fmt(satuan)}`;
+    if (name) {
+      subtotalsHtml += `<div class="subtotal-row"><span>${name} ×${qty}</span><span>${fmt(sub)}</span></div>`;
+      total += sub;
+    }
+  });
+  document.getElementById("terima-subtotals").innerHTML = subtotalsHtml;
+  document.getElementById("t-grand-total").textContent = `Rp ${fmt(total)}`;
 }
 
 // ─── Remove Row ───────────────────────────────────────────
@@ -1039,10 +1133,11 @@ function removeRow(rowId, type) {
   if (siblings.length <= 1) { showToast("Minimal 1 item", "error"); return; }
   el.remove();
   if (type === "penjualan") updatePenjualanSummary();
+  else if (type === "terima") updateTerimaSummary();
   else updatePengeluaranSummary();
 }
 
-// ─── Cetak Struk (RawBT → Printer Bluetooth 80mm) ─────────
+// ─── Cetak Struk (RawBT → Printer Bluetooth 58mm) ─────────
 
 // Ratakan teks kiri & kanan dalam satu baris selebar `width` karakter.
 // Kalau tidak muat, teks kanan otomatis turun ke baris baru.
@@ -1361,9 +1456,9 @@ async function submitPengeluaran() {
     const id = row.id.replace("pe-row-", "");
     const bahan = document.getElementById(`pe-bahan-${id}`)?.value.trim() || "";
     const jumlah = parseFloat(document.getElementById(`pe-qty-${id}`)?.value) || 0;
-    const hargaSatuan = parseFloat(document.getElementById(`pe-harga-${id}`)?.value) || 0;
+    const total = parseFloat(document.getElementById(`pe-total-${id}`)?.value) || 0;
     if (!bahan || jumlah <= 0) return;
-    items.push({ bahan, jumlah, hargaSatuan });
+    items.push({ bahan, jumlah, total });
   });
 
   if (items.length === 0) { showToast("Isi minimal 1 item", "error"); return; }
@@ -1396,6 +1491,47 @@ async function submitPengeluaran() {
   }
 }
 
+// ─── Submit Terima Barang ───────────────────────────────────
+async function submitTerima() {
+  if (!API_URL) { showToast("Hubungkan ke spreadsheet dulu", "error"); return; }
+  const rows = document.querySelectorAll("[id^='t-row-']");
+  const items = [];
+
+  rows.forEach(row => {
+    const id = row.id.replace("t-row-", "");
+    const barang = document.getElementById(`t-nama-${id}`)?.value.trim() || "";
+    const jumlah = parseFloat(document.getElementById(`t-qty-${id}`)?.value) || 0;
+    const total = parseFloat(document.getElementById(`t-total-${id}`)?.value) || 0;
+    if (!barang || jumlah <= 0) return;
+    items.push({ barang, jumlah, total });
+  });
+
+  if (items.length === 0) { showToast("Isi minimal 1 item", "error"); return; }
+
+  const btn = document.getElementById("btn-terima");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Menyimpan...';
+
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "addReceive", data: items })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`✅ ${data.message}`, "success");
+      resetTerima();
+    } else {
+      showToast("Gagal: " + data.error, "error");
+    }
+  } catch(e) {
+    showToast("Error: " + e.message, "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = "Simpan ke Sheet Receive";
+  }
+}
+
 // ─── Reset ────────────────────────────────────────────────
 function resetPenjualan() {
   document.getElementById("penjualan-items").innerHTML = "";
@@ -1412,6 +1548,11 @@ function resetPengeluaran() {
   document.getElementById("pengeluaran-items").innerHTML = "";
   pengeluaranCount = 0;
   addPengeluaranItem();
+}
+function resetTerima() {
+  document.getElementById("terima-items").innerHTML = "";
+  terimaCount = 0;
+  addTerimaItem();
 }
 
 // ─── Utils ────────────────────────────────────────────────
