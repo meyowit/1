@@ -608,6 +608,12 @@
     </div>
   </div>
 
+  <div class="section-label">Pembeli</div>
+  <div>
+    <label class="field-label">Nama Pembeli</label>
+    <input type="text" id="p-pembeli" placeholder="Nama pembeli untuk struk" autocomplete="off" />
+  </div>
+
   <div class="section-label">Pembayaran</div>
   <div class="pay-grid">
     <div>
@@ -1196,8 +1202,10 @@ function buildStrukText(items, adjType, adjValue, grandTotal, pembayaran, bank, 
   out += wrapCenterText(STORE_ADDRESS, W) + "\n";
   out += centerText("Struk Penjualan", W) + "\n";
   out += line + "\n";
+  if (extra.orderNumber) out += `No. ${String(extra.orderNumber).padStart(2, "0")}\n`;
   out += now + "\n";
-  if (extra.worker) out += `Dikasirkan oleh: ${extra.worker}\n`;
+  out += `Pembeli : ${extra.pembeli || "-"}\n`;
+  out += `Kasir   : ${extra.worker || "-"}\n`;
   out += line + "\n";
 
   items.forEach(it => {
@@ -1213,11 +1221,24 @@ function buildStrukText(items, adjType, adjValue, grandTotal, pembayaran, bank, 
   }
 
   out += padLine("TOTAL", "Rp " + fmt(grandTotal), W) + "\n";
-  out += padLine("Bayar", pembayaran + (bank ? " - " + bank : ""), W) + "\n";
+
+  // Format label metode bayar: Cash -> "Cash" saja, Transfer -> "Transfer-BCA", QRIS -> "QRIS" saja
+  let bayarLabel;
+  if (pembayaran === "Cash") bayarLabel = "Cash";
+  else if (pembayaran === "QRIS") bayarLabel = "QRIS";
+  else if (pembayaran === "Transfer") bayarLabel = "Transfer" + (bank ? "-" + bank : "");
+  else bayarLabel = pembayaran + (bank ? " - " + bank : ""); // fallback metode lain di masa depan
+  out += padLine("Bayar", bayarLabel, W) + "\n";
+
   if (pembayaran === "Cash" && extra.cashGiven > 0) {
     out += padLine("Cash", "Rp " + fmt(extra.cashGiven), W) + "\n";
     out += padLine("Kembali", "Rp " + fmt(extra.kembalian), W) + "\n";
   }
+  out += line + "\n";
+  out += centerText("Saran, kritik & kerjasama:", W) + "\n";
+  out += centerText("WA 085174433240", W) + "\n";
+  out += centerText("meyowcorp@gmail.com", W) + "\n";
+  out += centerText("IG @meyowdimsum", W) + "\n";
   out += line + "\n";
   out += centerText("Terima kasih!", W) + "\n";
   out += "\n\n\n"; // spasi kosong untuk sobek kertas
@@ -1402,12 +1423,15 @@ function submitPenjualan() {
     kembalian = cashGiven - grand;
   }
 
+  const pembeli = document.getElementById("p-pembeli").value.trim();
+  if (!pembeli) { showToast("Isi nama pembeli dulu", "error"); return; }
+
   const strukText = buildStrukText(items, adjType, adjValue, grand, pembayaran, bank, {
-    worker: activeWorker, cashGiven, kembalian
+    worker: activeWorker, pembeli, cashGiven, kembalian
   });
 
   // Simpan sementara, belum dikirim ke Sheet — menunggu konfirmasi dari preview
-  pendingPenjualan = { items, adjType, adjValue, grand, pembayaran, bank, strukText, worker: activeWorker };
+  pendingPenjualan = { items, adjType, adjValue, grand, pembayaran, bank, pembeli, cashGiven, kembalian, worker: activeWorker };
 
   document.getElementById("preview-struk-text").textContent = strukText;
   document.getElementById("preview-overlay").style.display = "flex";
@@ -1422,7 +1446,7 @@ function closePreviewModal() {
 // ─── Submit Penjualan (tahap 2: setelah dikonfirmasi di preview) ──
 async function confirmSubmit() {
   if (!pendingPenjualan) return;
-  const { items, adjType, adjValue, grand, pembayaran, bank, strukText, worker } = pendingPenjualan;
+  const { items, adjType, adjValue, grand, pembayaran, bank, pembeli, cashGiven, kembalian, worker } = pendingPenjualan;
 
   const confirmBtn = document.getElementById("btn-preview-confirm");
   confirmBtn.disabled = true;
@@ -1436,8 +1460,13 @@ async function confirmSubmit() {
     const data = await res.json();
     if (data.success) {
       showToast(`✅ ${data.message}`, "success");
-      lastStrukText = strukText;
-      printStruk(strukText);
+      // Nomor urut customer harian baru pasti setelah backend konfirmasi simpan,
+      // jadi struk final (untuk dicetak) dibangun ulang di sini dengan nomor asli.
+      const finalStrukText = buildStrukText(items, adjType, adjValue, grand, pembayaran, bank, {
+        worker, pembeli, cashGiven, kembalian, orderNumber: data.orderNumber
+      });
+      lastStrukText = finalStrukText;
+      printStruk(finalStrukText);
       document.getElementById("preview-overlay").style.display = "none";
       pendingPenjualan = null;
       resetPenjualan();
@@ -1544,6 +1573,7 @@ function resetPenjualan() {
   penjualanCount = 0;
   document.getElementById("p-diskon").value = "";
   setAdjType("diskon");
+  document.getElementById("p-pembeli").value = "";
   document.getElementById("p-pembayaran").value = "";
   document.getElementById("p-bank").value = "";
   document.getElementById("p-cash-given").value = "";
