@@ -132,6 +132,49 @@
   }
   #retry-btn:hover { border-color: var(--accent); color: var(--accent); }
 
+  /* ── Layout: portrait = header di atas (default), landscape = header jadi sidebar kiri ── */
+  @media (orientation: landscape) and (min-width: 640px) {
+    #app-content.visible {
+      display: flex;
+      align-items: stretch;
+    }
+    #app-content.visible > header {
+      flex-direction: column;
+      align-items: flex-start;
+      width: 230px;
+      min-width: 230px;
+      max-width: 230px;
+      height: 100vh;
+      position: sticky;
+      top: 0;
+      left: 0;
+      border-bottom: none;
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      gap: 18px;
+    }
+    #app-content.visible > header .header-right {
+      margin-left: 0;
+      flex-direction: column;
+      align-items: stretch;
+      width: 100%;
+      gap: 8px;
+    }
+    #app-content.visible > header .worker-badge,
+    #app-content.visible > header #retry-btn {
+      width: 100%;
+      text-align: center;
+    }
+    /* Sisi kanan: konten aktif (menu utama ATAU salah satu panel) */
+    #app-content.visible > .main-menu,
+    #app-content.visible > .panel.active {
+      flex: 1;
+      min-width: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+  }
+
   /* ── Menu Utama ── */
   .main-menu {
     display: flex;
@@ -849,7 +892,7 @@ function populateDropdowns() {
 }
 
 // ─── Penjaga Kasir (Worker) ─────────────────────────────────
-let WORKERS = ["Jennifer", "Usniatuz"]; // default sementara, akan ditimpa hasil fetch dari Settings
+let WORKERS = ["Adiva", "Aulia", "Admin"]; // default sementara, akan ditimpa hasil fetch dari Settings
 const WORKER_KEY = "meyow_active_worker";
 let activeWorker = localStorage.getItem(WORKER_KEY) || "";
 
