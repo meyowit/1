@@ -1245,7 +1245,10 @@ function buildStrukText(items, adjType, adjValue, grandTotal, pembayaran, bank, 
   out += wrapCenterText(STORE_ADDRESS, W) + "\n";
   out += centerText("Struk Penjualan", W) + "\n";
   out += line + "\n";
-  if (extra.orderNumber) out += `No. ${String(extra.orderNumber).padStart(2, "0")}\n`;
+  if (extra.orderNumber) {
+    const noLabel = extra.orderNumber === "--" ? "No. -- (otomatis saat disimpan)" : `No. ${String(extra.orderNumber).padStart(2, "0")}`;
+    out += noLabel + "\n";
+  }
   out += now + "\n";
   out += `Pembeli : ${extra.pembeli || "-"}\n`;
   out += `Kasir   : ${extra.worker || "-"}\n`;
@@ -1470,7 +1473,7 @@ function submitPenjualan() {
   if (!pembeli) { showToast("Isi nama pembeli dulu", "error"); return; }
 
   const strukText = buildStrukText(items, adjType, adjValue, grand, pembayaran, bank, {
-    worker: activeWorker, pembeli, cashGiven, kembalian
+    worker: activeWorker, pembeli, cashGiven, kembalian, orderNumber: "--"
   });
 
   // Simpan sementara, belum dikirim ke Sheet — menunggu konfirmasi dari preview
