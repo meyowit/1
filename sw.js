@@ -8,12 +8,13 @@
 // naikkan angka versi di CACHE_NAME di bawah ini (v2 -> v3 -> dst).
 // Kalau tidak dinaikkan, browser akan mengira sw.js "tidak berubah"
 // dan tetap memakai cache lama walau kode di GitHub sudah baru.
-const CACHE_NAME = "meyow-kasir-shell-v3";
+const CACHE_NAME = "meyow-kasir-shell-v4";
 
 const APP_SHELL = [
   "./manifest.json",
   "./icon-192.png",
-  "./icon-512.png"
+  "./icon-512.png",
+  "./logo.jpg"
 ];
 
 self.addEventListener("install", (event) => {
