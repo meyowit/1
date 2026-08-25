@@ -204,6 +204,56 @@
   .menu-card-label { font-size: 17px; font-weight: 800; color: var(--text); }
   .menu-card-sub { font-size: 12px; color: var(--muted); }
 
+  /* ── Ringkasan Hari Ini ── */
+  .summary-card {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(232,115,76,.28);
+  }
+  .summary-card-title { font-size: 13px; font-weight: 700; opacity: .95; margin-bottom: 14px; }
+  .summary-card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .summary-stat { display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .summary-stat-value { font-size: 17px; font-weight: 800; line-height: 1.3; }
+  .summary-stat-label { font-size: 10px; opacity: .9; margin-top: 2px; }
+  .summary-card-best {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,.3);
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  /* ── Riwayat Transaksi ── */
+  .riwayat-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 30px 0; }
+  .riwayat-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 13px 14px;
+    margin-bottom: 10px;
+  }
+  .riwayat-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .riwayat-time { font-size: 11px; color: var(--muted); font-weight: 700; }
+  .riwayat-total { font-size: 15px; font-weight: 800; color: var(--accent); }
+  .riwayat-buyer { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+  .riwayat-items { font-size: 12px; color: var(--muted); line-height: 1.4; margin-bottom: 10px; }
+  .riwayat-bottom { display: flex; justify-content: space-between; align-items: center; }
+  .riwayat-pay { font-size: 11px; font-weight: 700; color: var(--muted); background: var(--surface); padding: 4px 9px; border-radius: 20px; border: 1px solid var(--border); }
+  .riwayat-print-btn {
+    background: none;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+  }
+  .riwayat-print-btn:active { opacity: .7; }
+
   .panel-nav { margin: -4px 0 16px; }
   .back-btn {
     background: var(--surface2);
@@ -605,6 +655,25 @@
 
 <!-- Menu Utama -->
 <div id="main-menu" class="main-menu">
+  <div class="summary-card" id="today-summary-card">
+    <div class="summary-card-title">📊 Ringkasan Hari Ini</div>
+    <div class="summary-card-grid">
+      <div class="summary-stat">
+        <span class="summary-stat-value" id="sum-total">--</span>
+        <span class="summary-stat-label">Total Penjualan</span>
+      </div>
+      <div class="summary-stat">
+        <span class="summary-stat-value" id="sum-trx">--</span>
+        <span class="summary-stat-label">Transaksi</span>
+      </div>
+      <div class="summary-stat">
+        <span class="summary-stat-value" id="sum-item">--</span>
+        <span class="summary-stat-label">Item Terjual</span>
+      </div>
+    </div>
+    <div class="summary-card-best" id="sum-best" style="display:none;"></div>
+  </div>
+
   <div class="menu-card" onclick="showView('penjualan')">
     <span class="menu-card-icon">🧾</span>
     <span class="menu-card-label">Penjualan</span>
@@ -619,6 +688,11 @@
     <span class="menu-card-icon">📥</span>
     <span class="menu-card-label">Terima Barang</span>
     <span class="menu-card-sub">Catat barang masuk dari pusat</span>
+  </div>
+  <div class="menu-card" onclick="showView('riwayat')">
+    <span class="menu-card-icon">🕘</span>
+    <span class="menu-card-label">Riwayat Transaksi</span>
+    <span class="menu-card-sub">Lihat &amp; cetak ulang struk terakhir</span>
   </div>
 </div>
 
@@ -744,6 +818,14 @@
   </button>
 </div>
 
+<!-- Panel Riwayat Transaksi -->
+<div class="panel" id="panel-riwayat">
+  <div class="panel-nav"><button class="back-btn" onclick="showView('menu')">← Menu</button></div>
+  <div class="section-label">Transaksi Terakhir</div>
+  <div id="riwayat-list"><div class="riwayat-empty">Memuat riwayat...</div></div>
+  <button class="add-btn" style="margin-top:14px" onclick="loadRiwayat()">🔄 Muat Ulang</button>
+</div>
+
 <!-- Shared searchable datalists (used for "cari produk / bahan" search feature) -->
 <datalist id="produk-datalist"></datalist>
 <datalist id="bahan-datalist"></datalist>
@@ -797,6 +879,7 @@ let payments = [];
 let banks = [];
 let penjualanCount = 0;
 let pengeluaranCount = 0;
+let riwayatCache = []; // hasil getRecentTransactions, dipakai untuk fitur cetak ulang
 
 // ─── Init ─────────────────────────────────────────────────
 window.onload = () => {
@@ -927,14 +1010,115 @@ function selectWorker(name) {
 function showView(name) {
   document.getElementById("main-menu").style.display = name === "menu" ? "flex" : "none";
   document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
-  if (name === "penjualan" || name === "pengeluaran" || name === "terima") {
+  if (name === "penjualan" || name === "pengeluaran" || name === "terima" || name === "riwayat") {
     document.getElementById(`panel-${name}`).classList.add("active");
     if (name === "penjualan" && !activeWorker) openWorkerPicker(); // wajib pilih penjaga dulu sebelum jualan
+    if (name === "riwayat") loadRiwayat();
   }
+  if (name === "menu") loadTodaySummary();
   window.scrollTo(0, 0);
 }
 // Alias lama, tetap ada untuk jaga-jaga
 function switchTab(name) { showView(name); }
+
+// ─── Ringkasan Hari Ini (kartu di Menu Utama) ──────────────
+async function loadTodaySummary() {
+  if (!API_URL) return;
+  try {
+    const res = await fetch(`${API_URL}?action=getTodaySummary`);
+    const data = await res.json();
+    if (!data.success) return;
+    document.getElementById("sum-total").textContent = "Rp " + fmt(data.totalPenjualan);
+    document.getElementById("sum-trx").textContent = data.jumlahTransaksi;
+    document.getElementById("sum-item").textContent = data.jumlahItem;
+    const bestEl = document.getElementById("sum-best");
+    if (data.produkTerlaris) {
+      bestEl.style.display = "block";
+      bestEl.textContent = `🔥 Terlaris hari ini: ${data.produkTerlaris.nama} (${data.produkTerlaris.qty}x)`;
+    } else {
+      bestEl.style.display = "none";
+    }
+  } catch (e) {
+    console.warn("Gagal memuat ringkasan hari ini:", e);
+    // Diamkan saja (bukan error kritikal) -> kartu tetap tampil "--"
+  }
+}
+
+// ─── Riwayat Transaksi ──────────────────────────────────────
+async function loadRiwayat() {
+  if (!API_URL) return;
+  const container = document.getElementById("riwayat-list");
+  container.innerHTML = '<div class="riwayat-empty">Memuat riwayat...</div>';
+  try {
+    const res = await fetch(`${API_URL}?action=getRecentTransactions&limit=15`);
+    const data = await res.json();
+    if (!data.success || !data.transactions || data.transactions.length === 0) {
+      container.innerHTML = '<div class="riwayat-empty">Belum ada transaksi tercatat.</div>';
+      riwayatCache = [];
+      return;
+    }
+    riwayatCache = data.transactions;
+    container.innerHTML = data.transactions.map((tx, i) => {
+      const itemsSummary = tx.items.map(it => `${it.produk} x${it.jumlah}`).join(", ");
+      return `
+        <div class="riwayat-card">
+          <div class="riwayat-top">
+            <span class="riwayat-time">${tx.tanggal}</span>
+            <span class="riwayat-total">Rp ${fmt(tx.total)}</span>
+          </div>
+          <div class="riwayat-buyer">👤 ${tx.pembeli}</div>
+          <div class="riwayat-items">${itemsSummary}</div>
+          <div class="riwayat-bottom">
+            <span class="riwayat-pay">${tx.pembayaran}${tx.bank ? " - " + tx.bank : ""}</span>
+            <button class="riwayat-print-btn" onclick="reprintFromRiwayat(${i})">🖨️ Cetak Ulang</button>
+          </div>
+        </div>`;
+    }).join("");
+  } catch (e) {
+    container.innerHTML = '<div class="riwayat-empty">Gagal memuat riwayat. Cek koneksi internet, lalu "Muat Ulang".</div>';
+  }
+}
+
+// Susun teks struk sederhana dari data riwayat (dipakai khusus untuk cetak ulang;
+// tidak menampilkan No. urut / Kasir karena data itu tidak disimpan di sheet)
+function buildRiwayatStrukText(tx) {
+  const W = RECEIPT_WIDTH;
+  const line = "-".repeat(W);
+  let out = "";
+  out += centerText(STORE_NAME, W) + "\n";
+  out += wrapCenterText(STORE_ADDRESS, W) + "\n";
+  out += centerText("Struk Penjualan (Cetak Ulang)", W) + "\n";
+  out += line + "\n";
+  out += tx.tanggal + "\n";
+  out += `Pembeli : ${tx.pembeli || "-"}\n`;
+  out += line + "\n";
+
+  tx.items.forEach(it => {
+    out += padLine(`${it.produk} x${it.jumlah}`, fmt(it.total), W) + "\n";
+  });
+  out += line + "\n";
+  out += padLine("TOTAL", "Rp " + fmt(tx.total), W) + "\n";
+
+  let bayarLabel;
+  if (tx.pembayaran === "Cash") bayarLabel = "Cash";
+  else if (tx.pembayaran === "QRIS") bayarLabel = "QRIS";
+  else if (tx.pembayaran === "Transfer") bayarLabel = "Transfer" + (tx.bank ? "-" + tx.bank : "");
+  else bayarLabel = tx.pembayaran + (tx.bank ? " - " + tx.bank : "");
+  out += padLine("Bayar", bayarLabel, W) + "\n";
+  out += line + "\n";
+  out += centerText("Terima kasih!", W) + "\n";
+  out += "\n\n\n";
+  return out;
+}
+
+function reprintFromRiwayat(index) {
+  const tx = riwayatCache[index];
+  if (!tx) { showToast("Data transaksi tidak ditemukan", "error"); return; }
+  const strukText = buildRiwayatStrukText(tx);
+  lastStrukText = strukText;
+  printStruk(strukText);
+  showToast("Mengirim ke printer...", "success");
+}
 
 // ─── Auto-isi Bank berdasarkan metode pembayaran ───────────
 const BANK_AUTOFILL = { "Transfer": "BCA", "Cash": "Cash", "QRIS": "BCA" };
