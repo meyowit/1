@@ -413,6 +413,124 @@
   /* ── Payment section ── */
   .pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0; }
 
+  /* ── Cari Menu & Keranjang (UI baru Penjualan) ── */
+  .product-search-box input {
+    width: 100%;
+    padding: 14px 15px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 16px;
+  }
+  .product-search-box input:focus { outline: none; border-color: var(--accent); }
+
+  .product-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 2px;
+  }
+  .product-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 13px;
+    cursor: pointer;
+    text-align: left;
+    transition: all .12s;
+  }
+  .product-chip:active { transform: scale(.96); background: rgba(232,115,76,.12); border-color: var(--accent); }
+  .product-chip-name { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.3; }
+  .product-chip-price { font-size: 13.5px; font-weight: 700; color: var(--accent); }
+  .product-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    padding: 20px 0;
+  }
+
+  .cart-count-badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    border-radius: 20px;
+    padding: 1px 8px;
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+  .cart-empty {
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    padding: 22px 10px;
+    background: var(--surface2);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+  }
+  .cart-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    gap: 6px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 13px 14px;
+    margin-bottom: 8px;
+  }
+  .cart-item-info { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; }
+  .cart-item-name { font-size: 16px; font-weight: 700; color: var(--text); }
+  .cart-item-price { font-size: 13px; color: var(--muted); }
+  .cart-item-remove {
+    grid-column: 2; grid-row: 1;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 17px;
+    cursor: pointer;
+    padding: 2px 6px;
+    justify-self: end;
+  }
+  .cart-item-remove:hover { color: var(--red); }
+  .cart-item-qty {
+    grid-column: 1; grid-row: 2;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .qty-btn {
+    width: 32px; height: 32px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--accent);
+    font-size: 18px;
+    font-weight: 800;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .qty-btn:active { background: rgba(232,115,76,.15); }
+  .qty-value { font-size: 17px; font-weight: 700; min-width: 22px; text-align: center; }
+  .cart-item-subtotal {
+    grid-column: 2; grid-row: 2;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--accent);
+    justify-self: end;
+  }
+
   .cash-box {
     background: var(--surface2);
     border: 1px solid var(--border);
@@ -631,9 +749,17 @@
 <!-- Panel Penjualan -->
 <div class="panel" id="panel-penjualan">
   <div class="panel-nav"><button class="back-btn" onclick="showView('menu')">← Menu</button></div>
-  <div class="section-label">Item Dibeli</div>
-  <div id="penjualan-items"></div>
-  <button class="add-btn" onclick="addPenjualanItem()">+ Tambah Produk</button>
+
+  <div class="section-label">Cari Menu</div>
+  <div class="product-search-box">
+    <input type="text" id="p-search" placeholder="🔍 Ketik nama produk..." autocomplete="off" oninput="renderProductSearch()" onfocus="renderProductSearch()" />
+  </div>
+  <div id="product-search-results" class="product-grid"></div>
+
+  <div class="section-label" style="margin-top:24px;">
+    Item Dipilih <span class="cart-count-badge" id="cart-count-badge" style="display:none;">0</span>
+  </div>
+  <div id="cart-list"></div>
 
   <div class="summary-box" style="margin-top:20px">
     <div class="section-label">Ringkasan Order</div>
@@ -745,7 +871,6 @@
 </div>
 
 <!-- Shared searchable datalists (used for "cari produk / bahan" search feature) -->
-<datalist id="produk-datalist"></datalist>
 <datalist id="bahan-datalist"></datalist>
 
 <div id="toast"></div>
@@ -795,8 +920,8 @@ let products = [];
 let bahanList = [];
 let payments = [];
 let banks = [];
-let penjualanCount = 0;
 let pengeluaranCount = 0;
+let cart = {}; // keranjang Penjualan: { "Nama Produk": {produk, harga, jumlah} }
 
 // ─── Init ─────────────────────────────────────────────────
 window.onload = () => {
@@ -829,7 +954,7 @@ function attemptLogin() {
 function showApp() {
   document.getElementById("login-screen").style.display = "none";
   document.getElementById("app-content").classList.add("visible");
-  addPenjualanItem();
+  renderCart();
   addPengeluaranItem();
   addTerimaItem();
   updateWorkerBadge();
@@ -888,11 +1013,12 @@ function populateDropdowns() {
     banks.forEach(b => { el.innerHTML += `<option>${b}</option>`; });
   });
 
-  // Populate searchable datalists (fitur pencarian produk/bahan)
-  document.getElementById("produk-datalist").innerHTML =
-    products.map(p => `<option value="${p.name}">${fmt(p.price)}</option>`).join("");
+  // Populate searchable datalist untuk Bahan (Pengeluaran/Terima Barang)
   document.getElementById("bahan-datalist").innerHTML =
     bahanList.map(b => `<option value="${b.name}">${b.biaya ? fmt(b.biaya) : ''}</option>`).join("");
+
+  // Refresh hasil pencarian produk kalau panel Penjualan lagi kebuka pas data baru datang
+  renderProductSearch();
 }
 
 // ─── Penjaga Kasir (Worker) ─────────────────────────────────
@@ -979,68 +1105,92 @@ function setAdjType(type) {
   updatePenjualanSummary();
 }
 
-// ─── Penjualan Items ──────────────────────────────────────
-function addPenjualanItem() {
-  penjualanCount++;
-  const id = penjualanCount;
-  const container = document.getElementById("penjualan-items");
-  const div = document.createElement("div");
-  div.className = "item-row";
-  div.id = `pj-row-${id}`;
-  div.innerHTML = `
-    <div class="row-head">
-      <span class="row-num">Item #${id}</span>
-      <button class="remove-btn" onclick="removeRow('pj-row-${id}', 'penjualan')">✕</button>
-    </div>
-    <div>
-      <label class="field-label">Produk</label>
-      <input type="text" class="produk-select" id="pj-produk-${id}" list="produk-datalist" placeholder="🔍 Cari produk..." autocomplete="off" oninput="onProdukChange(this, ${id})" onchange="onProdukChange(this, ${id})" />
-    </div>
-    <div class="field-group">
-      <div>
-        <label class="field-label">Qty</label>
-        <input type="number" class="qty-input" id="pj-qty-${id}" min="1" value="1" onchange="updatePenjualanSummary()" />
-      </div>
-      <div>
-        <label class="field-label">Harga (Rp)</label>
-        <input type="number" class="harga-input" id="pj-harga-${id}" min="0" value="0" onchange="updatePenjualanSummary()" />
-      </div>
-    </div>
-    <div class="subtotal-row">
-      <span>Subtotal</span>
-      <span class="price-tag" id="pj-sub-${id}">Rp 0</span>
-    </div>
-  `;
-  container.appendChild(div);
+// ─── Penjualan: Cari Produk + Keranjang (tap-to-add) ───────
+// Escape tanda kutip tunggal supaya aman dipakai di dalam atribut onclick="..."
+function escQuote(s) { return String(s).replace(/'/g, "\\'"); }
+
+function renderProductSearch() {
+  const term = document.getElementById("p-search").value.trim().toLowerCase();
+  const container = document.getElementById("product-search-results");
+  const matches = term
+    ? products.filter(p => p.name.toLowerCase().includes(term))
+    : products;
+
+  if (matches.length === 0) {
+    container.innerHTML = '<div class="product-empty">Produk tidak ditemukan.</div>';
+    return;
+  }
+  container.innerHTML = matches.map(p => `
+    <button type="button" class="product-chip" onclick="addToCart('${escQuote(p.name)}')">
+      <span class="product-chip-name">${p.name}</span>
+      <span class="product-chip-price">Rp ${fmt(p.price)}</span>
+    </button>
+  `).join("");
+}
+
+function addToCart(name) {
+  const p = products.find(pr => pr.name === name);
+  if (!p) return;
+  if (cart[name]) cart[name].jumlah += 1;
+  else cart[name] = { produk: name, harga: p.price, jumlah: 1 };
+  renderCart();
   updatePenjualanSummary();
 }
 
-function onProdukChange(inputEl, id) {
-  const match = products.find(p => p.name === inputEl.value);
-  if (match) {
-    document.getElementById(`pj-harga-${id}`).value = match.price;
-  }
+function changeCartQty(name, delta) {
+  if (!cart[name]) return;
+  cart[name].jumlah += delta;
+  if (cart[name].jumlah <= 0) delete cart[name];
+  renderCart();
   updatePenjualanSummary();
+}
+
+function removeFromCart(name) {
+  delete cart[name];
+  renderCart();
+  updatePenjualanSummary();
+}
+
+function renderCart() {
+  const container = document.getElementById("cart-list");
+  const keys = Object.keys(cart);
+  const badge = document.getElementById("cart-count-badge");
+  const totalQty = keys.reduce((acc, k) => acc + cart[k].jumlah, 0);
+
+  if (totalQty > 0) { badge.style.display = "inline-block"; badge.textContent = totalQty; }
+  else badge.style.display = "none";
+
+  if (keys.length === 0) {
+    container.innerHTML = '<div class="cart-empty">Belum ada item dipilih.<br>Cari &amp; tap produk di atas.</div>';
+    return;
+  }
+  container.innerHTML = keys.map(k => {
+    const it = cart[k];
+    const safeKey = escQuote(k);
+    return `
+      <div class="cart-item">
+        <div class="cart-item-info">
+          <span class="cart-item-name">${it.produk}</span>
+          <span class="cart-item-price">Rp ${fmt(it.harga)} / pcs</span>
+        </div>
+        <button type="button" class="cart-item-remove" onclick="removeFromCart('${safeKey}')" title="Hapus item">✕</button>
+        <div class="cart-item-qty">
+          <button type="button" class="qty-btn" onclick="changeCartQty('${safeKey}', -1)">−</button>
+          <span class="qty-value">${it.jumlah}</span>
+          <button type="button" class="qty-btn" onclick="changeCartQty('${safeKey}', 1)">+</button>
+        </div>
+        <div class="cart-item-subtotal">Rp ${fmt(it.jumlah * it.harga)}</div>
+      </div>`;
+  }).join("");
 }
 
 function updatePenjualanSummary() {
-  const rows = document.querySelectorAll("[id^='pj-row-']");
-  let total = 0;
-  let subtotalsHtml = "";
-  rows.forEach(row => {
-    const id = row.id.replace("pj-row-", "");
-    const produkInput = document.getElementById(`pj-produk-${id}`);
-    const produkName = produkInput ? produkInput.value : "";
-    const qty = parseFloat(document.getElementById(`pj-qty-${id}`)?.value) || 0;
-    const harga = parseFloat(document.getElementById(`pj-harga-${id}`)?.value) || 0;
-    const sub = qty * harga;
-    const subEl = document.getElementById(`pj-sub-${id}`);
-    if (subEl) subEl.textContent = `Rp ${fmt(sub)}`;
-    if (produkName) {
-      subtotalsHtml += `<div class="subtotal-row"><span>${produkName} ×${qty}</span><span>${fmt(sub)}</span></div>`;
-      total += sub;
-    }
-  });
+  const keys = Object.keys(cart);
+  const total = keys.reduce((acc, k) => acc + cart[k].jumlah * cart[k].harga, 0);
+  let subtotalsHtml = keys.map(k => {
+    const it = cart[k];
+    return `<div class="subtotal-row"><span>${it.produk} ×${it.jumlah}</span><span>${fmt(it.jumlah * it.harga)}</span></div>`;
+  }).join("");
 
   // Diskon / Admin — jika kosong, tidak ada penyesuaian sama sekali
   const adjType = document.getElementById("p-adj-type").value;
@@ -1191,8 +1341,7 @@ function removeRow(rowId, type) {
   const siblings = document.querySelectorAll(`[id^="${rowId.split('-').slice(0,2).join('-')}-"]`);
   if (siblings.length <= 1) { showToast("Minimal 1 item", "error"); return; }
   el.remove();
-  if (type === "penjualan") updatePenjualanSummary();
-  else if (type === "terima") updateTerimaSummary();
+  if (type === "terima") updateTerimaSummary();
   else updatePengeluaranSummary();
 }
 
@@ -1249,9 +1398,8 @@ function buildStrukText(items, adjType, adjValue, grandTotal, pembayaran, bank, 
   out += wrapCenterText(STORE_ADDRESS, W) + "\n";
   out += centerText("Struk Penjualan", W) + "\n";
   out += line + "\n";
-  if (extra.orderNumber) {
-    const noLabel = extra.orderNumber === "--" ? "No. -- (otomatis saat disimpan)" : `No. ${String(extra.orderNumber).padStart(2, "0")}`;
-    out += noLabel + "\n";
+  if (extra.kodeInvoice) {
+    out += `Invoice : ${extra.kodeInvoice}\n`;
   }
   out += now + "\n";
   out += `Pembeli : ${extra.pembeli || "-"}\n`;
@@ -1429,20 +1577,12 @@ function submitPenjualan() {
   if (!API_URL) { showToast("Hubungkan ke spreadsheet dulu", "error"); return; }
   if (!activeWorker) { showToast("Pilih penjaga kasir dulu", "error"); openWorkerPicker(); return; }
 
-  const rows = document.querySelectorAll("[id^='pj-row-']");
-  const items = [];
+  const cartKeys = Object.keys(cart);
+  if (cartKeys.length === 0) { showToast("Pilih minimal 1 produk", "error"); return; }
 
-  rows.forEach(row => {
-    const id = row.id.replace("pj-row-", "");
-    const produkInput = document.getElementById(`pj-produk-${id}`);
-    const produk = produkInput?.value || "";
-    const jumlah = parseFloat(document.getElementById(`pj-qty-${id}`)?.value) || 0;
-    const harga = parseFloat(document.getElementById(`pj-harga-${id}`)?.value) || 0;
-    if (!produk || jumlah <= 0) return; // skip empty rows
-    items.push({ produk, jumlah, harga, diskon: 0, adminFee: 0 });
-  });
-
-  if (items.length === 0) { showToast("Pilih minimal 1 produk", "error"); return; }
+  const items = cartKeys.map(k => ({
+    produk: cart[k].produk, jumlah: cart[k].jumlah, harga: cart[k].harga, diskon: 0, adminFee: 0
+  }));
 
   const adjType = document.getElementById("p-adj-type").value;
   const adjRaw = document.getElementById("p-diskon").value;
@@ -1478,7 +1618,7 @@ function submitPenjualan() {
   }
 
   const strukText = buildStrukText(items, adjType, adjValue, grand, pembayaran, bank, {
-    worker: activeWorker, pembeli, cashGiven, kembalian, orderNumber: "--"
+    worker: activeWorker, pembeli, cashGiven, kembalian, kodeInvoice: "-- (otomatis saat disimpan)"
   });
 
   // Simpan sementara, belum dikirim ke Sheet — menunggu konfirmasi dari preview
@@ -1511,10 +1651,10 @@ async function confirmSubmit() {
     const data = await res.json();
     if (data.success) {
       showToast(`✅ ${data.message}`, "success");
-      // Nomor urut customer harian baru pasti setelah backend konfirmasi simpan,
-      // jadi struk final (untuk dicetak) dibangun ulang di sini dengan nomor asli.
+      // Kode Invoice baru pasti setelah backend konfirmasi simpan,
+      // jadi struk final (untuk dicetak) dibangun ulang di sini dengan kode asli.
       const finalStrukText = buildStrukText(items, adjType, adjValue, grand, pembayaran, bank, {
-        worker, pembeli, cashGiven, kembalian, orderNumber: data.orderNumber
+        worker, pembeli, cashGiven, kembalian, kodeInvoice: data.kodeInvoice
       });
       lastStrukText = finalStrukText;
       printStruk(finalStrukText);
@@ -1620,8 +1760,10 @@ async function submitTerima() {
 
 // ─── Reset ────────────────────────────────────────────────
 function resetPenjualan() {
-  document.getElementById("penjualan-items").innerHTML = "";
-  penjualanCount = 0;
+  cart = {};
+  renderCart();
+  document.getElementById("p-search").value = "";
+  document.getElementById("product-search-results").innerHTML = "";
   document.getElementById("p-diskon").value = "";
   setAdjType("diskon");
   document.getElementById("p-pembeli").value = "";
@@ -1629,7 +1771,7 @@ function resetPenjualan() {
   document.getElementById("p-bank").value = "";
   document.getElementById("p-cash-given").value = "";
   document.getElementById("cash-box").style.display = "none";
-  addPenjualanItem();
+  updatePenjualanSummary();
 }
 function resetPengeluaran() {
   document.getElementById("pengeluaran-items").innerHTML = "";
